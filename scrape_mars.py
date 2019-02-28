@@ -22,10 +22,10 @@ def scrape():
 
     #scrapping latest news about mars from nasa icluding title 
     ##and each paragraph
-    news_title = soup.find("div", class_="content_title").text
+    news_title= soup.find("div", class_="content_title").text
     news_p = soup.find("div", class_="article_teaser_body").text
-    mars_data['news_title'] = news_title
-    mars_data['news_p'] = news_p 
+
+    
 
  #Mars Featured Image
     url_image = "https://www.jpl.nasa.gov/spaceimages/?search=&category=Mars"
@@ -43,8 +43,8 @@ def scrape():
     html_image = browser.html
     soup = BeautifulSoup(html_image, "html.parser")
     img_url = soup.find("img", class_="fancybox-image")["src"]
-    mars_featured_img_url = base_url + img_url
-    mars_data["featured_image"] = mars_featured_img_url
+    featured_img_url = base_url + img_url
+   
 
 # Scraping Mars Weather, get mars weather's latest tweet from the website
     url_weather = "https://twitter.com/marswxreport?lang=en"
@@ -52,7 +52,7 @@ def scrape():
     html_weather = browser.html
     soup = BeautifulSoup(html_weather, "html.parser")
     mars_weather = soup.find("p", class_="TweetTextSize TweetTextSize--normal js-tweet-text tweet-text").text
-    mars_data["mars_weather"] = mars_weather
+    
 
 # Mars Facts
     url_facts='https://space-facts.com/mars/'
@@ -61,51 +61,61 @@ def scrape():
     df_mars_facts = table[0]
     df_mars_facts.columns = ["Parameter", "Values"]
     df_mars_facts.set_index(["Parameter"])
-    mars_html_table = df_mars_facts.to_html()
-    mars_html_table = mars_html_table.replace("\n", "")
-    mars_data["mars_facts_table"] = mars_html_table
+    mars_table = df_mars_facts.to_html()
+    mars_table = mars_table.replace("\n", "")
+    
 
 
 # Mars Hemisphere
     url_hemisphere= 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
     browser.visit(url_hemisphere)
-    hemisphere_base_url = "{0.scheme}://{0.netloc}/".format(urlsplit(url_hemisphere))
-    #xpath=//img[@class='wide-image']
-    html_hemispheres = browser.html
-    soup = BeautifulSoup(html_hemispheres, 'html.parser')
+    html = browser.html
+    soup = BeautifulSoup(html, 'html.parser')
+    items= soup.find_all('div', class_='item')
+    hemispheres = []
+    for i in items:
+        hem = i.h3.text
+        hemispheres.append(hem)
 
-    # Retreive all items that contain mars hemispheres information
-    items = soup.find_all('div', class_='item')
-    # Create empty list for hemisphere urls 
-    hemisphere_image_urls = []
-    # Store the main_ul 
-    hemispheres_main_url = 'https://astrogeology.usgs.gov'
-    # Loop through the all items that contains hemisphere information
-    for i in items: 
-    # Store title
-        title = i.find('h3').text
-    # Store link that leads to full image website
-        partial_img_url = i.find('a', class_='itemLink product-item')['href']
-    
-    # Visit the link that contains the full image website 
-        browser.visit(hemisphere_base_url + partial_img_url)
-    
-    # HTML Object of individual hemisphere information website 
-        partial_img_html = browser.html
-    
-    # Parse HTML with Beautiful Soup for every individual hemisphere information website 
-        soup = BeautifulSoup( partial_img_html, 'html.parser')
-    
-    # Retrieve full image source 
-        img_url = hemispheres_main_url + soup.find('img', class_='wide-image')['src']
-    
-    # Append the retreived information into a list of dictionaries 
-        hemisphere_image_urls.append({"title" : title, "img_url" : img_url})
-    
-        hemisphere_image_urls
-        mars_data['hemisphere_image_urls'] = hemisphere_image_urls
 
-        browser.quit()
-        
-        return mars_data
+    images = []
+    for h in hemispheres:
+        url_hemisphere = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+        browser.visit(url_hemisphere)
+        html = browser.html
+        soup = BeautifulSoup(html, 'html.parser')
+        browser.click_link_by_partial_text(h)
+        img_url = browser.find_by_tag('img')[3]['src']
+        images.append(img_url)
 
+
+
+    hemisphere_image_urls = [
+        {"title": hemispheres[0], "img_url": images[0]},
+        {"title": hemispheres[1], "img_url": images[1]},
+        {"title": hemispheres[2], "img_url": images[2]},
+        {"title": hemispheres[3], "img_url": images[3]},
+    ]
+      
+
+# Store data in a dictionary
+    mars_data = {
+        "news_p": news_p,
+        "news_title": news_title,
+        "featured_img_url": featured_img_url,
+         "mars_weather": mars_weather,
+         "mars_table": mars_table,
+         "hemisphere_image_urls":hemisphere_image_urls
+        }
+
+    # Close the browser after scraping
+    browser.quit()
+
+    # Return results
+    return mars_data
+    return table
+
+
+
+
+    
